@@ -8,6 +8,7 @@ spring:
     password: booking_password
     driver-class-name: org.postgresql.Driver
 
+
   jpa:
     hibernate:
       ddl-auto: create-drop
