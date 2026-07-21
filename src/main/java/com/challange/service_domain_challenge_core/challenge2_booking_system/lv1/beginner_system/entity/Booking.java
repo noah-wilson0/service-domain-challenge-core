@@ -56,9 +56,38 @@ public class Booking {
     }
 
     public static Booking create(String user, TrainScheduleSeat scheduleSeat, BookingStatus bookingStatus) {
+        validateUserId(user);
+        validateScheduleSeat(scheduleSeat);
+        validateStatus(bookingStatus);
+
         return new Booking(user, scheduleSeat, bookingStatus);
     }
 
+    private static void validateUserId(String userId) {
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException(
+                    "사용자 ID는 필수입니다."
+            );
+        }
+    }
+
+    private static void validateScheduleSeat(
+            TrainScheduleSeat scheduleSeat
+    ) {
+        if (scheduleSeat == null) {
+            throw new IllegalArgumentException(
+                    "운행 좌석은 필수입니다."
+            );
+        }
+    }
+
+    private static void validateStatus(BookingStatus status) {
+        if (status == null) {
+            throw new IllegalArgumentException(
+                    "예매 상태는 필수입니다."
+            );
+        }
+    }
 
     @Override
     public boolean equals(Object object) {

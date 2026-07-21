@@ -9,8 +9,12 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -172,6 +176,117 @@ class BookingRepositoryTest {
                 )
         );
 
+    }
+
+    @Test
+    @DisplayName("같은 운행 일정에는 동일한 좌석을 중복 등록할 수 없다")
+    void rejectDuplicateScheduleSeat() {
+        // given
+        TrainScheduleSeat duplicate = TrainScheduleSeat.create(
+                schedule,
+                bookingScheduleSeat.getSeat()
+        );
+
+        // when & then
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> trainScheduleSeatRepository.saveAndFlush(duplicate)
+        );
+    }
+
+    @Test
+    @DisplayName("동일한 운행 좌석에는 예매를 중복 저장할 수 없다")
+    void rejectDuplicateBooking() {
+        // given
+        bookingScheduleSeat.reserve();
+
+        Booking first = Booking.create(
+                "U-001",
+                bookingScheduleSeat,
+                BookingStatus.CONFIRMED
+        );
+        Booking duplicate = Booking.create(
+                "U-002",
+                bookingScheduleSeat,
+                BookingStatus.CONFIRMED
+        );
+
+        bookingRepository.saveAndFlush(first);
+
+        // when & then
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> bookingRepository.saveAndFlush(duplicate)
+        );
+    }
+
+    /**
+     * TODO Booking.create() 예외 처리 하기 @Valid 쓰기
+     */
+    @Test
+    @DisplayName("사용자 ID가 없으면 예매를 생성할 수 없다")
+    void rejectBookingWithoutUserId() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> Booking.create(
+                        null,
+                        bookingScheduleSeat,
+                        BookingStatus.CONFIRMED
+                )
+        );
+    }
+
+    /**
+     * TODO Booking.create 예외 처리하기
+     * @param userId
+     */
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "   "})
+    @DisplayName("사용자 ID가 비어 있으면 예매를 생성할 수 없다")
+    void rejectBlankUserId(String userId) {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> Booking.create(
+                        userId,
+                        bookingScheduleSeat,
+                        BookingStatus.CONFIRMED
+                )
+        );
+    }
+
+    /**
+     * TODO Booking.create() 예외 처리 하기  @Valid 쓰기
+     */
+    @Test
+    @DisplayName("운행 좌석이 없으면 예매를 생성할 수 없다")
+    void rejectBookingWithoutScheduleSeat() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> Booking.create(
+                        "U-001",
+                        null,
+                        BookingStatus.CONFIRMED
+                )
+        );
+    }
+
+    @Test
+    @DisplayName("운행 일정과 다른 기차의 좌석은 등록할 수 없다")
+    void rejectSeatFromDifferentTrain() {
+        // given
+        Train otherTrain = Train.create("새마을호");
+        Seat seatOfOtherTrain = otherTrain.addCar(1).addSeat(1);
+        trainRepository.saveAndFlush(otherTrain);
+
+        // when & then
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> TrainScheduleSeat.create(
+                        schedule,
+                        seatOfOtherTrain
+                )
+        );
     }
 
 
